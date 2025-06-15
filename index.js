@@ -543,14 +543,20 @@ app.post(
         return res.status(404).json({ message: 'User not found' });
       }
 
-      const { bio, specialization, experience, education, avatar } = req.body;
-      console.log('Received profile data:', {
+      const {
         bio,
         specialization,
         experience,
         education,
         avatar,
-      });
+        certifications,
+        expertise,
+        socialLinks,
+        teacherName,
+        email,
+      } = req.body;
+
+      console.log('Received profile data:', req.body);
 
       // Find existing profile or create new one
       let teacherProfile = await TeacherProfile.findOne({
@@ -560,28 +566,34 @@ app.post(
       if (teacherProfile) {
         console.log('Updating existing profile for user:', req.user.userId);
         // Update existing profile
+        teacherProfile.teacherName = teacherName || teacherProfile.teacherName;
+        teacherProfile.email = email || teacherProfile.email;
         teacherProfile.bio = bio || teacherProfile.bio;
         teacherProfile.specialization =
           specialization || teacherProfile.specialization;
         teacherProfile.experience = experience || teacherProfile.experience;
         teacherProfile.education = education || teacherProfile.education;
         teacherProfile.avatar = avatar || teacherProfile.avatar;
+        teacherProfile.certifications =
+          certifications || teacherProfile.certifications;
+        teacherProfile.expertise = expertise || teacherProfile.expertise;
+        teacherProfile.socialLinks = socialLinks || teacherProfile.socialLinks;
         teacherProfile.updatedAt = Date.now();
       } else {
         console.log('Creating new profile for user:', req.user.userId);
         // Create new profile with required fields
         teacherProfile = new TeacherProfile({
           userId: req.user.userId,
-          teacherName: user.name, // Required field
-          email: user.email, // Required field
+          teacherName: teacherName || user.name,
+          email: email || user.email,
           bio: bio || '',
           specialization: specialization || '',
           experience: experience || '0',
           education: education || '',
           avatar: avatar || '',
-          certifications: [],
-          expertise: [],
-          socialLinks: {
+          certifications: certifications || [],
+          expertise: expertise || [],
+          socialLinks: socialLinks || {
             linkedin: '',
             github: '',
             twitter: '',
