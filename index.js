@@ -237,10 +237,20 @@ app.get('/api/favorites', authenticateToken, async (req, res) => {
   }
 });
 
-// Course endpoints
+// Get courses by teacher ID
 app.get('/api/courses', async (req, res) => {
   try {
-    const courses = await Course.find().populate('teacherId', 'name email');
+    const { teacherId } = req.query;
+
+    let query = {};
+    if (teacherId) {
+      query.teacherId = teacherId;
+    }
+
+    const courses = await Course.find(query)
+      .populate('teacherId', 'name email')
+      .sort({ createdAt: -1 });
+
     res.json(courses);
   } catch (error) {
     console.error('Get courses error:', error);
