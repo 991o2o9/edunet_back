@@ -569,16 +569,34 @@ app.post(
         teacherProfile.updatedAt = Date.now();
       } else {
         console.log('Creating new profile for user:', req.user.userId);
-        // Create new profile
+        // Create new profile with required fields
         teacherProfile = new TeacherProfile({
           userId: req.user.userId,
-          teacherName: user.name,
-          email: user.email,
+          teacherName: user.name, // Required field
+          email: user.email, // Required field
           bio: bio || '',
           specialization: specialization || '',
           experience: experience || '0',
           education: education || '',
           avatar: avatar || '',
+          certifications: [],
+          expertise: [],
+          socialLinks: {
+            linkedin: '',
+            github: '',
+            twitter: '',
+            website: '',
+          },
+        });
+      }
+
+      // Validate the profile before saving
+      const validationError = teacherProfile.validateSync();
+      if (validationError) {
+        console.error('Validation error:', validationError);
+        return res.status(400).json({
+          message: 'Validation error',
+          error: validationError.message,
         });
       }
 
