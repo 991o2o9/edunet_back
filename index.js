@@ -718,6 +718,239 @@ app.put(
   }
 );
 
+// Get all users (admin only)
+app.get('/api/users', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const users = await User.find().select('-__v');
+    res.json(users);
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Update user (admin only)
+app.put('/api/users/:userId', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, role } = req.body;
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update user
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.role = role || user.role;
+
+    await user.save();
+
+    res.json(user);
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Delete user (admin only)
+app.delete(
+  '/api/users/:userId',
+  authenticateToken,
+  isAdmin,
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      // Check if user exists
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Delete user
+      await User.findByIdAndDelete(userId);
+
+      // If user is a teacher, also delete their profile
+      if (user.role === 'teacher') {
+        await TeacherProfile.findOneAndDelete({ userId });
+      }
+
+      res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+      console.error('Delete user error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+);
+
+// Reset user password (admin only)
+app.put(
+  '/api/users/:userId/reset-password',
+  authenticateToken,
+  isAdmin,
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({ message: 'Password is required' });
+      }
+
+      // Check if user exists
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Update password
+      user.password = password;
+      await user.save();
+
+      res.json({ message: 'Password reset successfully' });
+    } catch (error) {
+      console.error('Reset password error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+);
+
+// Create first admin (only if no admin exists)
+app.post('/api/setup-admin', async (req, res) => {
+  try {
+    // Check if any admin exists
+    const adminExists = await User.findOne({ role: 'admin' });
+    if (adminExists) {
+      return res.status(403).json({ message: 'Admin already exists' });
+    }
+
+    const { email, password, name } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Create admin user
+    const admin = new User({
+      email,
+      password,
+      name,
+      role: 'admin',
+    });
+
+    await admin.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: admin._id, email: admin.email, role: admin.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(201).json({
+      message: 'Admin created successfully',
+      token,
+      user: {
+        id: admin._id,
+        email: admin.email,
+        name: admin.name,
+        role: admin.role,
+      },
+    });
+  } catch (error) {
+    console.error('Create admin error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Promote user to admin (only by existing admin)
+app.put(
+  '/api/users/:userId/promote',
+  authenticateToken,
+  isAdmin,
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      // Check if user exists
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Check if user is already an admin
+      if (user.role === 'admin') {
+        return res.status(400).json({ message: 'User is already an admin' });
+      }
+
+      // Promote user to admin
+      user.role = 'admin';
+      await user.save();
+
+      res.json({
+        message: 'User promoted to admin successfully',
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error('Promote user error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+);
+
+// Demote admin to teacher (only by existing admin)
+app.put(
+  '/api/users/:userId/demote',
+  authenticateToken,
+  isAdmin,
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      // Prevent self-demotion
+      if (userId === req.user.userId) {
+        return res.status(403).json({ message: 'Cannot demote yourself' });
+      }
+
+      // Check if user exists
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Check if user is an admin
+      if (user.role !== 'admin') {
+        return res.status(400).json({ message: 'User is not an admin' });
+      }
+
+      // Demote admin to teacher
+      user.role = 'teacher';
+      await user.save();
+
+      res.json({
+        message: 'Admin demoted to teacher successfully',
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error('Demote admin error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+);
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
