@@ -961,6 +961,27 @@ app.put(
   }
 );
 
+// Get lessons by course ID
+app.get('/api/lessons', async (req, res) => {
+  try {
+    const { courseId } = req.query;
+
+    if (!courseId) {
+      return res.status(400).json({ message: 'Course ID is required' });
+    }
+
+    const lessons = await Lesson.find({ courseId }).sort({
+      order: 1,
+      createdAt: 1,
+    });
+
+    res.json(lessons);
+  } catch (error) {
+    console.error('Get lessons error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
