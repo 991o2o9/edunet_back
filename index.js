@@ -12,6 +12,7 @@ const Homework = require('./models/Homework');
 const CourseReview = require('./models/CourseReview');
 const CourseApplication = require('./models/CourseApplication');
 const Payment = require('./models/Payment');
+const TeacherProfile = require('./models/TeacherProfile');
 
 const app = express();
 // Use the PORT environment variable provided by the hosting service, or fallback to 5000 for local development
@@ -457,6 +458,81 @@ app.get('/api/payments', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// Get teacher profile
+app.get('/api/teacherProfiles', async (req, res) => {
+  try {
+    const { teacherId } = req.query;
+
+    if (!teacherId) {
+      return res.status(400).json({ message: 'Teacher ID is required' });
+    }
+
+    // First find the user to ensure it's a teacher
+    const user = await User.findOne({ _id: teacherId, role: 'teacher' });
+    if (!user) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    // Then find or create a profile
+    let teacherProfile = await TeacherProfile.findOne({ userId: teacherId });
+
+    if (!teacherProfile) {
+      // Create a default profile if none exists
+      teacherProfile = new TeacherProfile({
+        userId: teacherId,
+        bio: '',
+        specialization: '',
+        experience: 0,
+        education: '',
+      });
+      await teacherProfile.save();
+    }
+
+    // Populate user information
+    await teacherProfile.populate('userId', 'name email role');
+    res.json(teacherProfile);
+  } catch (error) {
+    console.error('Get teacher profile error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Create teacher profile
+app.post(
+  '/api/teacherProfiles',
+  authenticateToken,
+  isTeacher,
+  async (req, res) => {
+    try {
+      const { bio, specialization, experience, education } = req.body;
+
+      // Check if profile already exists
+      const existingProfile = await TeacherProfile.findOne({
+        userId: req.user.userId,
+      });
+      if (existingProfile) {
+        return res
+          .status(400)
+          .json({ message: 'Teacher profile already exists' });
+      }
+
+      const teacherProfile = new TeacherProfile({
+        userId: req.user.userId,
+        bio,
+        specialization,
+        experience,
+        education,
+      });
+
+      await teacherProfile.save();
+      res.status(201).json(teacherProfile);
+    } catch (error) {
+      console.error('Create teacher profile error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+);
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
