@@ -459,41 +459,72 @@ app.get('/api/payments', authenticateToken, async (req, res) => {
   }
 });
 
-// Get teacher profile
+// Get teacher profile(s)
 app.get('/api/teacherProfiles', async (req, res) => {
   try {
     const { teacherId } = req.query;
 
-    if (!teacherId) {
-      return res.status(400).json({ message: 'Teacher ID is required' });
+    if (teacherId) {
+      // Get single teacher profile
+      const user = await User.findOne({ _id: teacherId, role: 'teacher' });
+      if (!user) {
+        return res.status(404).json({ message: 'Teacher not found' });
+      }
+
+      let teacherProfile = await TeacherProfile.findOne({ userId: teacherId });
+
+      if (!teacherProfile) {
+        teacherProfile = new TeacherProfile({
+          userId: teacherId,
+          bio: '',
+          specialization: '',
+          experience: 0,
+          education: '',
+        });
+        await teacherProfile.save();
+      }
+
+      await teacherProfile.populate('userId', 'name email role');
+      return res.json(teacherProfile);
+    } else {
+      // Get all teachers
+      const teachers = await User.find({ role: 'teacher' });
+      const teacherIds = teachers.map((teacher) => teacher._id);
+
+      const teacherProfiles = await TeacherProfile.find({
+        userId: { $in: teacherIds },
+      }).populate('userId', 'name email role');
+
+      // Create profiles for teachers who don't have one
+      const existingProfileIds = teacherProfiles.map((profile) =>
+        profile.userId._id.toString()
+      );
+      const missingProfiles = teachers.filter(
+        (teacher) => !existingProfileIds.includes(teacher._id.toString())
+      );
+
+      if (missingProfiles.length > 0) {
+        const newProfiles = missingProfiles.map((teacher) => ({
+          userId: teacher._id,
+          bio: '',
+          specialization: '',
+          experience: 0,
+          education: '',
+        }));
+
+        await TeacherProfile.insertMany(newProfiles);
+
+        // Fetch all profiles again including the newly created ones
+        const allProfiles = await TeacherProfile.find({
+          userId: { $in: teacherIds },
+        }).populate('userId', 'name email role');
+        return res.json(allProfiles);
+      }
+
+      return res.json(teacherProfiles);
     }
-
-    // First find the user to ensure it's a teacher
-    const user = await User.findOne({ _id: teacherId, role: 'teacher' });
-    if (!user) {
-      return res.status(404).json({ message: 'Teacher not found' });
-    }
-
-    // Then find or create a profile
-    let teacherProfile = await TeacherProfile.findOne({ userId: teacherId });
-
-    if (!teacherProfile) {
-      // Create a default profile if none exists
-      teacherProfile = new TeacherProfile({
-        userId: teacherId,
-        bio: '',
-        specialization: '',
-        experience: 0,
-        education: '',
-      });
-      await teacherProfile.save();
-    }
-
-    // Populate user information
-    await teacherProfile.populate('userId', 'name email role');
-    res.json(teacherProfile);
   } catch (error) {
-    console.error('Get teacher profile error:', error);
+    console.error('Get teacher profile(s) error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
