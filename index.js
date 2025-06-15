@@ -14,6 +14,7 @@ const CourseApplication = require('./models/CourseApplication');
 const Payment = require('./models/Payment');
 
 const app = express();
+// Use the PORT environment variable provided by the hosting service, or fallback to 5000 for local development
 const PORT = process.env.PORT || 5000;
 
 // Middleware
@@ -458,6 +459,6 @@ app.get('/api/payments', authenticateToken, async (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
 });
