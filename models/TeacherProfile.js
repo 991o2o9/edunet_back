@@ -7,6 +7,14 @@ const teacherProfileSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  teacherName: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+  },
   bio: {
     type: String,
     default: '',
@@ -16,8 +24,8 @@ const teacherProfileSchema = new mongoose.Schema({
     default: '',
   },
   experience: {
-    type: Number,
-    default: 0,
+    type: String,
+    default: '0',
   },
   education: {
     type: String,
@@ -26,6 +34,34 @@ const teacherProfileSchema = new mongoose.Schema({
   avatar: {
     type: String,
     default: '',
+  },
+  certifications: [
+    {
+      type: String,
+    },
+  ],
+  expertise: [
+    {
+      type: String,
+    },
+  ],
+  socialLinks: {
+    linkedin: {
+      type: String,
+      default: '',
+    },
+    github: {
+      type: String,
+      default: '',
+    },
+    twitter: {
+      type: String,
+      default: '',
+    },
+    website: {
+      type: String,
+      default: '',
+    },
   },
   rating: {
     type: Number,

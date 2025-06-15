@@ -582,7 +582,18 @@ app.put(
   async (req, res) => {
     try {
       const { teacherId } = req.params;
-      const { bio, specialization, experience, education, avatar } = req.body;
+      const {
+        teacherName,
+        email,
+        bio,
+        specialization,
+        experience,
+        education,
+        avatar,
+        certifications,
+        expertise,
+        socialLinks,
+      } = req.body;
 
       // Verify that the teacher is updating their own profile
       if (teacherId !== req.user.userId.toString()) {
@@ -598,20 +609,45 @@ app.put(
         // Create new profile if it doesn't exist
         teacherProfile = new TeacherProfile({
           userId: teacherId,
+          teacherName: teacherName || '',
+          email: email || '',
           bio: bio || '',
           specialization: specialization || '',
-          experience: experience || 0,
+          experience: experience || '0',
           education: education || '',
           avatar: avatar || '',
+          certifications: certifications || [],
+          expertise: expertise || [],
+          socialLinks: socialLinks || {
+            linkedin: '',
+            github: '',
+            twitter: '',
+            website: '',
+          },
         });
       } else {
         // Update existing profile
+        teacherProfile.teacherName = teacherName || teacherProfile.teacherName;
+        teacherProfile.email = email || teacherProfile.email;
         teacherProfile.bio = bio || teacherProfile.bio;
         teacherProfile.specialization =
           specialization || teacherProfile.specialization;
         teacherProfile.experience = experience || teacherProfile.experience;
         teacherProfile.education = education || teacherProfile.education;
         teacherProfile.avatar = avatar || teacherProfile.avatar;
+        teacherProfile.certifications =
+          certifications || teacherProfile.certifications;
+        teacherProfile.expertise = expertise || teacherProfile.expertise;
+        teacherProfile.socialLinks = {
+          linkedin:
+            socialLinks?.linkedin || teacherProfile.socialLinks?.linkedin || '',
+          github:
+            socialLinks?.github || teacherProfile.socialLinks?.github || '',
+          twitter:
+            socialLinks?.twitter || teacherProfile.socialLinks?.twitter || '',
+          website:
+            socialLinks?.website || teacherProfile.socialLinks?.website || '',
+        };
         teacherProfile.updatedAt = Date.now();
       }
 
