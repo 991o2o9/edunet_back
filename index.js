@@ -529,7 +529,7 @@ app.get('/api/teacherProfiles', async (req, res) => {
   }
 });
 
-// Create teacher profile
+// Create or update teacher profile
 app.post(
   '/api/teacherProfiles',
   authenticateToken,
@@ -538,28 +538,35 @@ app.post(
     try {
       const { bio, specialization, experience, education } = req.body;
 
-      // Check if profile already exists
-      const existingProfile = await TeacherProfile.findOne({
+      // Find existing profile or create new one
+      let teacherProfile = await TeacherProfile.findOne({
         userId: req.user.userId,
       });
-      if (existingProfile) {
-        return res
-          .status(400)
-          .json({ message: 'Teacher profile already exists' });
+
+      if (teacherProfile) {
+        // Update existing profile
+        teacherProfile.bio = bio || teacherProfile.bio;
+        teacherProfile.specialization =
+          specialization || teacherProfile.specialization;
+        teacherProfile.experience = experience || teacherProfile.experience;
+        teacherProfile.education = education || teacherProfile.education;
+        teacherProfile.updatedAt = Date.now();
+      } else {
+        // Create new profile
+        teacherProfile = new TeacherProfile({
+          userId: req.user.userId,
+          bio: bio || '',
+          specialization: specialization || '',
+          experience: experience || 0,
+          education: education || '',
+        });
       }
 
-      const teacherProfile = new TeacherProfile({
-        userId: req.user.userId,
-        bio,
-        specialization,
-        experience,
-        education,
-      });
-
       await teacherProfile.save();
-      res.status(201).json(teacherProfile);
+      await teacherProfile.populate('userId', 'name email role');
+      res.json(teacherProfile);
     } catch (error) {
-      console.error('Create teacher profile error:', error);
+      console.error('Create/Update teacher profile error:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   }
