@@ -982,6 +982,50 @@ app.get('/api/lessons', async (req, res) => {
   }
 });
 
+// Get homework by enrollment ID
+app.get('/api/homework', async (req, res) => {
+  try {
+    const { enrollmentId } = req.query;
+
+    if (!enrollmentId) {
+      return res.status(400).json({ message: 'Enrollment ID is required' });
+    }
+
+    // First get the enrollment to get the courseId
+    const enrollment = await Enrollment.findById(enrollmentId);
+    if (!enrollment) {
+      return res.status(404).json({ message: 'Enrollment not found' });
+    }
+
+    // Get all lessons for this course
+    const lessons = await Lesson.find({ courseId: enrollment.courseId }).sort({
+      order: 1,
+    });
+
+    // Get homework for each lesson
+    const homeworkPromises = lessons.map(async (lesson) => {
+      const homework = await Homework.findOne({
+        lessonId: lesson._id,
+        userId: enrollment.userId,
+      });
+
+      return {
+        lessonId: lesson._id,
+        lessonTitle: lesson.title,
+        lessonOrder: lesson.order,
+        homework: homework || null,
+      };
+    });
+
+    const homeworkList = await Promise.all(homeworkPromises);
+
+    res.json(homeworkList);
+  } catch (error) {
+    console.error('Get homework error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
