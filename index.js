@@ -536,7 +536,7 @@ app.post(
   isTeacher,
   async (req, res) => {
     try {
-      const { bio, specialization, experience, education } = req.body;
+      const { bio, specialization, experience, education, avatar } = req.body;
 
       // Find existing profile or create new one
       let teacherProfile = await TeacherProfile.findOne({
@@ -550,6 +550,7 @@ app.post(
           specialization || teacherProfile.specialization;
         teacherProfile.experience = experience || teacherProfile.experience;
         teacherProfile.education = education || teacherProfile.education;
+        teacherProfile.avatar = avatar || teacherProfile.avatar;
         teacherProfile.updatedAt = Date.now();
       } else {
         // Create new profile
@@ -559,6 +560,7 @@ app.post(
           specialization: specialization || '',
           experience: experience || 0,
           education: education || '',
+          avatar: avatar || '',
         });
       }
 

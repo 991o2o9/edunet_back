@@ -23,6 +23,10 @@ const teacherProfileSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  avatar: {
+    type: String,
+    default: '',
+  },
   rating: {
     type: Number,
     default: 0,
