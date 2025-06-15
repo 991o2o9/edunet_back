@@ -536,7 +536,21 @@ app.post(
   isTeacher,
   async (req, res) => {
     try {
+      // First verify that the user exists
+      const user = await User.findById(req.user.userId);
+      if (!user) {
+        console.error('User not found:', req.user.userId);
+        return res.status(404).json({ message: 'User not found' });
+      }
+
       const { bio, specialization, experience, education, avatar } = req.body;
+      console.log('Received profile data:', {
+        bio,
+        specialization,
+        experience,
+        education,
+        avatar,
+      });
 
       // Find existing profile or create new one
       let teacherProfile = await TeacherProfile.findOne({
@@ -544,6 +558,7 @@ app.post(
       });
 
       if (teacherProfile) {
+        console.log('Updating existing profile for user:', req.user.userId);
         // Update existing profile
         teacherProfile.bio = bio || teacherProfile.bio;
         teacherProfile.specialization =
@@ -553,12 +568,15 @@ app.post(
         teacherProfile.avatar = avatar || teacherProfile.avatar;
         teacherProfile.updatedAt = Date.now();
       } else {
+        console.log('Creating new profile for user:', req.user.userId);
         // Create new profile
         teacherProfile = new TeacherProfile({
           userId: req.user.userId,
+          teacherName: user.name,
+          email: user.email,
           bio: bio || '',
           specialization: specialization || '',
-          experience: experience || 0,
+          experience: experience || '0',
           education: education || '',
           avatar: avatar || '',
         });
@@ -566,10 +584,19 @@ app.post(
 
       await teacherProfile.save();
       await teacherProfile.populate('userId', 'name email role');
+      console.log('Profile saved successfully:', teacherProfile._id);
       res.json(teacherProfile);
     } catch (error) {
-      console.error('Create/Update teacher profile error:', error);
-      res.status(500).json({ message: 'Internal server error' });
+      console.error('Create/Update teacher profile error:', {
+        error: error.message,
+        stack: error.stack,
+        userId: req.user?.userId,
+        body: req.body,
+      });
+      res.status(500).json({
+        message: 'Internal server error',
+        error: error.message,
+      });
     }
   }
 );
