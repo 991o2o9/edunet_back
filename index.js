@@ -574,6 +574,57 @@ app.post(
   }
 );
 
+// Update specific teacher profile
+app.put(
+  '/api/teacherProfiles/:teacherId',
+  authenticateToken,
+  isTeacher,
+  async (req, res) => {
+    try {
+      const { teacherId } = req.params;
+      const { bio, specialization, experience, education, avatar } = req.body;
+
+      // Verify that the teacher is updating their own profile
+      if (teacherId !== req.user.userId.toString()) {
+        return res
+          .status(403)
+          .json({ message: 'You can only update your own profile' });
+      }
+
+      // Find the profile
+      let teacherProfile = await TeacherProfile.findOne({ userId: teacherId });
+
+      if (!teacherProfile) {
+        // Create new profile if it doesn't exist
+        teacherProfile = new TeacherProfile({
+          userId: teacherId,
+          bio: bio || '',
+          specialization: specialization || '',
+          experience: experience || 0,
+          education: education || '',
+          avatar: avatar || '',
+        });
+      } else {
+        // Update existing profile
+        teacherProfile.bio = bio || teacherProfile.bio;
+        teacherProfile.specialization =
+          specialization || teacherProfile.specialization;
+        teacherProfile.experience = experience || teacherProfile.experience;
+        teacherProfile.education = education || teacherProfile.education;
+        teacherProfile.avatar = avatar || teacherProfile.avatar;
+        teacherProfile.updatedAt = Date.now();
+      }
+
+      await teacherProfile.save();
+      await teacherProfile.populate('userId', 'name email role');
+      res.json(teacherProfile);
+    } catch (error) {
+      console.error('Update teacher profile error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+);
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
