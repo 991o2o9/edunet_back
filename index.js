@@ -258,15 +258,29 @@ app.get('/api/courses', async (req, res) => {
   }
 });
 
+// Get course by ID
 app.get('/api/courses/:id', async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id).populate(
+    const { id } = req.params;
+
+    if (!id || id === 'undefined') {
+      return res.status(400).json({ message: 'Course ID is required' });
+    }
+
+    // Validate if id is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid course ID format' });
+    }
+
+    const course = await Course.findById(id).populate(
       'teacherId',
       'name email'
     );
+
     if (!course) {
       return res.status(404).json({ message: 'Course not found' });
     }
+
     res.json(course);
   } catch (error) {
     console.error('Get course error:', error);
