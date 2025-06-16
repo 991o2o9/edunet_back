@@ -1026,6 +1026,34 @@ app.get('/api/homework', async (req, res) => {
   }
 });
 
+// Get course reviews by course ID
+app.get('/api/courseReviews', async (req, res) => {
+  try {
+    const { courseId } = req.query;
+
+    if (!courseId) {
+      return res.status(400).json({ message: 'Course ID is required' });
+    }
+
+    const reviews = await CourseReview.find({ courseId })
+      .populate('userId', 'name email')
+      .sort({ createdAt: -1 });
+
+    // Calculate average rating
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
+
+    res.json({
+      reviews,
+      averageRating: parseFloat(averageRating.toFixed(1)),
+      totalReviews: reviews.length,
+    });
+  } catch (error) {
+    console.error('Get course reviews error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
